@@ -1,3 +1,5 @@
 GWAS Data Visualiser: An Analysis Tool for Visualising GWAS Data
+
 There are too few tools available to the public for analysing GWAS data, and few have the ability to combine annotation files and display interactive visualisations of GWAS results. I developed a GWAS Data Visualizer in the R programming language to facilitate viewing of annotated GWAS results and optimise data analysis using the included filters.
+
 GWAS Data Visualiser combines customer-uploaded GWAS data with annotation files and provides a data table with search capabilities and an interactive visualisation Manhattan plot. The interactive Manhattan plot allows users to move the axes and zoom the view area to explore a small portion of the data, or hover over a single SNP data point for more detailed information. The region filter and the three filters provided under the "conditions" column in the sidebar further facilitate user exploration and comparison of data. Users can download the filtered pure data file or export the Manhattan plot as a png.
