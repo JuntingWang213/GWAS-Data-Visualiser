@@ -46,7 +46,7 @@ selectInput(inputId = "level1", label="List of choices", choices = NULL),
 varSelectInput(inputId = "getColumn2", label="Filter Condition 3", data = ""),
 selectInput(inputId = "level2", label="List of choices", choices = NULL)),
 # filter by range: 
-menuItem("Range",  
+menuItem("Region",  
 textAreaInput("region_values", label = "Condition (chromosome:start bp-end bp)", value = ""),
 actionButton(inputId = "rangeplot", label = "Plot",style='padding:8px; font-size:110%; width:170px')),
 
