@@ -15,8 +15,9 @@ library(stringr)
 
 ui <- shinyUI(
 dashboardPage(
-dashboardHeader(title = "GWAS Data Visualiser"),
+dashboardHeader(title = "GWAS Data Visualiser", titleWidth = 235),
 dashboardSidebar(
+width = 235,
 sidebarMenu(
 # gwas file upload:
 fileInput("file1", "Choose csv/txt File", accept = c("text/csv","text/comma-separated-values,text/plain")),
@@ -25,7 +26,10 @@ fileInput("file2", "Choose Annotation File", accept = c("text/csv","text/comma-s
 radioButtons('sep', 'Data File Separator Value:', c(Comma=',',Semicolon=';',Tab='\t')),
 actionButton(inputId = "DTplot", label = "Merge Data", style='padding:8px; font-size:110%; width:170px'),
 # annotation the annotation file:
-menuItem("Download Annotation File", downloadButton("downloadData0", label = "Download Annotation File")),   
+menuItem("Download Annotation File",     
+actionButton("downloadData0", label = a(href="https://www.dropbox.com/scl/fi/amhc1ri1vveh88sei4g5v/annotation.txt?rlkey=onhl168f23w0g5d0ki7zp8gc4&dl=0", 
+                                        "Download Annotation File"),
+)),   
 # column name for manhattan plot:
 menuItem("Manhattan Plot",  
 uiOutput("manOutput"),
@@ -35,7 +39,7 @@ textAreaInput("bp_values", label = "Base-Pair Position Column Name", value = "",
 textAreaInput("p_values", label = "P-Value Column Name", value = "",height ='20px',width ='200px'),
 actionButton(inputId = "manhattanplot", label = "Plot",style='padding:8px; font-size:110%; width:170px')),
 # 3 filter conditions:               
-menuItem("Conditions",  
+menuItem("Filtering Conditions",  
 # condition 1:
 varSelectInput(inputId = "getColumn", label="Filter Condition 1", data = ""),
 selectInput(inputId = "level", label="List of choices", choices = NULL),
@@ -46,16 +50,17 @@ selectInput(inputId = "level1", label="List of choices", choices = NULL),
 varSelectInput(inputId = "getColumn2", label="Filter Condition 3", data = ""),
 selectInput(inputId = "level2", label="List of choices", choices = NULL)),
 # filter by range: 
-menuItem("Region",  
-textAreaInput("region_values", label = "Condition (chromosome:start bp-end bp)", value = ""),
+menuItem("Filter by Region",  
+textAreaInput("region_values", label = "Condition (chromosome:start bp-end bp/chromosome)", value = "",width ='200px'),
 actionButton(inputId = "rangeplot", label = "Plot",style='padding:8px; font-size:110%; width:170px')),
 
 # filter buttons:                 
-menuItem("Filter",  
+menuItem("Apply Filtering",  
 actionButton(inputId = "filterplot", label = "Filter Manhattan Plot", style='padding:8px; font-size:90%;width:180px'),
 actionButton(inputId = "filtertable", label = "Filter data table", style='padding:8px; font-size:90%;width:180px')),
-menuItem('Download The Filtered File',
-downloadButton('downloadData', label ='  Download The Filtered File'))
+menuItem('Download Filtered File',
+actionButton('downloadData', label ='Conditions Filtered File'),
+actionButton('downloadRange', label ='Region Filtered File'))
 )),
 # main panel:                
 dashboardBody(
@@ -70,14 +75,13 @@ DTOutput('tbl')
 
 server <- function(input, output) {
 options(shiny.maxRequestSize = 150000*1024^2)
-  
-output$downloadData0 <- downloadHandler(
-filename <- function(){paste("annotation", ".txt", sep = "")}, content <- function(file) {
-file.copy("/Users/juntingwang/Documents/Academic Files of University of Exeter/HPDM042 Data projects/test file/annotation_data0/annotation.txt", file)
-}, contentType = "application/csv")
+
+
   
 output$downloadData <- downloadHandler(filename = function(){paste('data-', Sys.Date(), '.csv', sep='')},
 content = function(file) {write.csv(full_join1(), file)})
+output$downloadRange <- downloadHandler(filename = function(){paste('data-', Sys.Date(), '.csv', sep='')},
+                                       content = function(file) {write.csv(rangefilter(), file)})
   
 # read the gwas file： 
 rdata <- reactive({
@@ -91,12 +95,12 @@ rdata1 <- reactive({
 inFile <- input$file2
 if(is.null(inFile))
 return(NULL) 
-read.csv(inFile$datapath, sep=input$sep)
+fread(inFile$datapath, sep=input$sep)
 })
 # merge the two files together：
 full_join <- reactive({
-merge(rdata(), rdata1(), by.x = "RSID", by.y = "Existing_variation", all.x= TRUE)
-
+df <- merge(rdata(), rdata1(), fread, by.x = "RSID", by.y = "Existing_variation", all.x= TRUE)
+na.omit(df)
 })
 #==========================================================================================================
 datList0 <- eventReactive(input$manhattanplot, {
@@ -117,8 +121,9 @@ snp = input$snp_values,
 chr = input$chr_values, 
 bp = input$bp_values, 
 p = input$p_values,
-suggestiveline =FALSE,
-col=c("#D2691E","#800080","#6495ED","#9ACD32")
+suggestiveline = F, 
+genomewideline = F,
+col = c("#D2691E","#800080","#6495ED","#9ACD32")
 )
 })
 })
@@ -161,7 +166,8 @@ snp = input$snp_values,
 chr = input$chr_values, 
 bp = input$bp_values, 
 p = input$p_values,
-suggestiveline =FALSE,
+suggestiveline = F, 
+genomewideline = F,
 col=c("#D2691E","#800080","#6495ED","#9ACD32"))
 })
 })
@@ -176,7 +182,8 @@ observeEvent(input$rangeplot,{
       chr = input$chr_values, 
       bp = input$bp_values, 
       p = input$p_values,
-      suggestiveline =FALSE,
+      suggestiveline = F, 
+      genomewideline = F,
       col=c("#D2691E","#800080","#6495ED","#9ACD32"))
   })
 })
@@ -222,12 +229,12 @@ updateSelectInput(inputId = "level2", choices =  levels(choice.name),selected = 
 # the range filter input:
 rangefilter <- reactive({
 full_join() %>%
-filter(CHR %in% as.character(map(str_split(input$region_values, "[:-]"), 1))) %>% 
-filter(between(POS,as.character(map(str_split(input$region_values, "[chr:-]"), 2)),
-as.character(map(str_split(input$region_values, "[chr:-]"), 3))
-)
-)
-})
+      filter(CHR %in% as.character(map(str_split(input$region_values, "[:-]"), 1))) %>% 
+      filter(between(POS,as.character(map(str_split(input$region_values, "[chr:-]"), 2)),
+                     as.character(map(str_split(input$region_values, "[chr:-]"), 3))
+      )
+      )
+  })
 datList2 <- reactive({
 rangefilter() %>% mutate_at(c(input$p_values), as.numeric)
 })
